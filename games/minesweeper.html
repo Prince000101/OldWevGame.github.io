@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Minesweeper — Canvas</title>
+<style>
+  body {
+    background: #222;
+    color: #eee;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 16px;
+    user-select: none;
+  }
+  canvas {
+    background: #bbb;
+    border: 3px solid #444;
+    image-rendering: pixelated;
+    cursor: pointer;
+  }
+  #hud {
+    margin-bottom: 12px;
+    font-size: 18px;
+  }
+  button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    background: #44aa44;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #55bb55;
+  }
+</style>
+</head>
+<body>
+
+<h1>Minesweeper</h1>
+<div id="hud">
+  Mines left: <span id="mines-left">40</span> | 
+  <button id="resetBtn">Restart</button>
+</div>
+<canvas id="board" width="512" height="512"></canvas>
+
+<script>
+(() => {
+  // CONFIG
+  const canvas = document.getElementById("board");
+  const ctx = canvas.getContext("2d");
+  const rows = 16;
+  const cols = 16;
+  const minesCount = 40;
+  const cellSize = canvas.width / cols;
+
+  const minesLeftEl = document.getElementById("mines-left");
+  const resetBtn = document.getElementById("resetBtn");
+
+  // GAME STATE
+  let board = [];
+  let revealedCount = 0;
+  let flagsPlaced = 0;
+  let gameOver = false;
+
+  // Each cell:
+  // { mine: bool, revealed: bool, flagged: bool, adjacent: int }
+
+  // Initialize board with empty cells
+  function initBoard() {
+    board = [];
+    for (let r = 0; r < rows; r++) {
+      const row = [];
+      for (let c = 0; c < cols; c++) {
+        row.push({ mine: false, revealed: false, flagged: false, adjacent: 0 });
+      }
+      board.push(row);
+    }
+  }
+
+  // Place mines randomly
+  function placeMines(excludeRow, excludeCol) {
+    let placed = 0;
+    while (placed < minesCount) {
+      const r = Math.floor(Math.random() * rows);
+      const c = Math.floor(Math.random() * cols);
+      if (board[r][c].mine) continue;
+      // exclude the first clicked cell and neighbors for fair start
+      if (Math.abs(r - excludeRow) <= 1 && Math.abs(c - excludeCol) <= 1) continue;
+      board[r][c].mine = true;
+      placed++;
+    }
+  }
+
+  // Count adjacent mines for each cell
+  function countAdjacents() {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (board[r][c].mine) continue;
+        let count = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].mine) {
+              count++;
+            }
+          }
+        }
+        board[r][c].adjacent = count;
+      }
+    }
+  }
+
+  // Reveal a cell, recursively reveal empty neighbors
+  function reveal(r, c) {
+    if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+    const cell = board[r][c];
+    if (cell.revealed || cell.flagged) return;
+
+    cell.revealed = true;
+    revealedCount++;
+
+    if (cell.mine) {
+      // Game over
+      gameOver = true;
+      revealAllMines();
+      draw();
+      alert("BOOM! You hit a mine. Game over.");
+      return;
+    }
+
+    if (cell.adjacent === 0) {
+      // reveal neighbors
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr !== 0 || dc !== 0) reveal(r + dr, c + dc);
+        }
+      }
+    }
+    checkWin();
+  }
+
+  // Reveal all mines (on game over)
+  function revealAllMines() {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (board[r][c].mine) board[r][c].revealed = true;
+      }
+    }
+  }
+
+  // Toggle flag on a cell
+  function toggleFlag(r, c) {
+    const cell = board[r][c];
+    if (cell.revealed) return;
+    if (cell.flagged) {
+      cell.flagged = false;
+      flagsPlaced--;
+    } else {
+      if (flagsPlaced >= minesCount) return; // no more flags than mines
+      cell.flagged = true;
+      flagsPlaced++;
+    }
+    updateMinesLeft();
+  }
+
+  // Check win condition
+  function checkWin() {
+    if (revealedCount === rows * cols - minesCount) {
+      gameOver = true;
+      revealAllMines();
+      draw();
+      alert("Congratulations! You cleared the board!");
+    }
+  }
+
+  // Draw board
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = `${cellSize * 0.65}px Verdana`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = c * cellSize;
+        const y = r * cellSize;
+        const cell = board[r][c];
+
+        // Draw cell background
+        if (cell.revealed) {
+          ctx.fillStyle = "#ddd";
+          ctx.fillRect(x, y, cellSize, cellSize);
+          if (cell.mine) {
+            // Draw mine
+            ctx.fillStyle = "#900";
+            ctx.beginPath();
+            ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#300";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i = 0; i < 8; i++){
+              const angle = i * Math.PI/4;
+              ctx.moveTo(x + cellSize/2, y + cellSize/2);
+              ctx.lineTo(x + cellSize/2 + Math.cos(angle)*cellSize*0.45, y + cellSize/2 + Math.sin(angle)*cellSize*0.45);
+            }
+            ctx.stroke();
+          } else if (cell.adjacent > 0) {
+            // Draw number
+            const colors = ["#0000FF","#006400","#FF0000","#000080","#800000","#008080","#000000","#808080"];
+            ctx.fillStyle = colors[cell.adjacent - 1] || "#000";
+            ctx.fillText(cell.adjacent, x + cellSize / 2, y + cellSize / 2);
+          }
+        } else {
+          // unrevealed
+          ctx.fillStyle = "#999";
+          ctx.fillRect(x, y, cellSize, cellSize);
+          // 3D border effect
+          ctx.strokeStyle = "#555";
+          ctx.beginPath();
+          ctx.moveTo(x, y + cellSize);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + cellSize, y);
+          ctx.stroke();
+
+          if (cell.flagged) {
+            // Draw flag
+            ctx.fillStyle = "#b00";
+            ctx.beginPath();
+            ctx.moveTo(x + cellSize * 0.4, y + cellSize * 0.8);
+            ctx.lineTo(x + cellSize * 0.6, y + cellSize * 0.8);
+            ctx.lineTo(x + cellSize * 0.5, y + cellSize * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            // flagpole
+            ctx.strokeStyle = "#600";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + cellSize * 0.5, y + cellSize * 0.8);
+            ctx.lineTo(x + cellSize * 0.5, y + cellSize * 0.3);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+          }
+        }
+
+        // cell border
+        ctx.strokeStyle = "#666";
+        ctx.strokeRect(x, y, cellSize, cellSize);
+      }
+    }
+  }
+
+  // Convert mouse event to cell coords
+  function getCellFromCoords(x, y) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = x - rect.left;
+    const my = y - rect.top;
+    const c = Math.floor(mx / cellSize);
+    const r = Math.floor(my / cellSize);
+    return { r, c };
+  }
+
+  // Flag mines left display
+  function updateMinesLeft() {
+    minesLeftEl.textContent = minesCount - flagsPlaced;
+  }
+
+  // GAME START STATE
+  function reset() {
+    gameOver = false;
+    revealedCount = 0;
+    flagsPlaced = 0;
+    initBoard();
+    updateMinesLeft();
+    draw();
+  }
+
+  // On first click, place mines avoiding that spot + neighbors
+  let firstClick = true;
+
+  canvas.addEventListener("mousedown", e => {
+    if(gameOver) return;
+    const { r, c } = getCellFromCoords(e.clientX, e.clientY);
+    if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+
+    if (e.button === 0) { // left click = reveal
+      if(firstClick){
+        placeMines(r, c);
+        countAdjacents();
+        firstClick = false;
+      }
+      reveal(r, c);
+      draw();
+    } else if (e.button === 2) { // right click = flag
+      toggleFlag(r, c);
+      draw();
+    }
+  });
+
+  // For browsers that block right-click menu on canvas by default
+  canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+  resetBtn.addEventListener("click", () => {
+    reset();
+    firstClick = true;
+  });
+
+  reset();
+})();
+</script>
+</body>
+</html>

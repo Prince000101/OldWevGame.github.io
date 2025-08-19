@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smooth Pong</title>
+  <style>
+    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { background: #111; display: block; }
+  </style>
+</head>
+<body>
+<canvas id="pong" width="800" height="500"></canvas>
+<script>
+const canvas = document.getElementById("pong");
+const ctx = canvas.getContext("2d");
+
+const paddleHeight = 100, paddleWidth = 15;
+let leftPaddle = { x: 10, y: canvas.height/2 - paddleHeight/2, dy: 0 };
+let rightPaddle = { x: canvas.width - 25, y: canvas.height/2 - paddleHeight/2, dy: 0 };
+let ball = { x: canvas.width/2, y: canvas.height/2, size: 12, speedX: 4, speedY: 4 };
+
+const keys = {};
+
+// Draw functions
+function drawRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+}
+
+function drawCircle(x, y, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawNet() {
+  for (let i = 0; i < canvas.height; i += 20) {
+    drawRect(canvas.width/2 - 1, i, 2, 10, "white");
+  }
+}
+
+// Movement
+function movePaddles() {
+  leftPaddle.y += leftPaddle.dy;
+  rightPaddle.y += rightPaddle.dy;
+
+  // prevent paddles from going off-screen
+  leftPaddle.y = Math.max(0, Math.min(canvas.height - paddleHeight, leftPaddle.y));
+  rightPaddle.y = Math.max(0, Math.min(canvas.height - paddleHeight, rightPaddle.y));
+}
+
+function moveBall() {
+  ball.x += ball.speedX;
+  ball.y += ball.speedY;
+
+  // top & bottom collision
+  if (ball.y - ball.size < 0 || ball.y + ball.size > canvas.height) {
+    ball.speedY *= -1;
+  }
+
+  // left paddle
+  if (ball.x - ball.size < leftPaddle.x + paddleWidth &&
+      ball.y > leftPaddle.y &&
+      ball.y < leftPaddle.y + paddleHeight) {
+    ball.speedX *= -1.05; // bounce & speed up
+    ball.x = leftPaddle.x + paddleWidth + ball.size;
+  }
+
+  // right paddle
+  if (ball.x + ball.size > rightPaddle.x &&
+      ball.y > rightPaddle.y &&
+      ball.y < rightPaddle.y + paddleHeight) {
+    ball.speedX *= -1.05; // bounce & speed up
+    ball.x = rightPaddle.x - ball.size;
+  }
+
+  // reset ball if out of bounds
+  if (ball.x - ball.size < 0 || ball.x + ball.size > canvas.width) {
+    resetBall();
+  }
+}
+
+function resetBall() {
+  ball.x = canvas.width/2;
+  ball.y = canvas.height/2;
+  ball.speedX = (Math.random() > 0.5 ? 4 : -4);
+  ball.speedY = (Math.random() > 0.5 ? 4 : -4);
+}
+
+// Input handling
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+
+function handleInput() {
+  // Left paddle (W/S)
+  if (keys["w"]) leftPaddle.dy = -6;
+  else if (keys["s"]) leftPaddle.dy = 6;
+  else leftPaddle.dy = 0;
+
+  // Right paddle (Arrow Up/Down)
+  if (keys["ArrowUp"]) rightPaddle.dy = -6;
+  else if (keys["ArrowDown"]) rightPaddle.dy = 6;
+  else rightPaddle.dy = 0;
+}
+
+// Game loop
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawNet();
+  drawRect(leftPaddle.x, leftPaddle.y, paddleWidth, paddleHeight, "white");
+  drawRect(rightPaddle.x, rightPaddle.y, paddleWidth, paddleHeight, "white");
+  drawCircle(ball.x, ball.y, ball.size, "white");
+
+  handleInput();
+  movePaddles();
+  moveBall();
+
+  requestAnimationFrame(gameLoop);
+}
+
+resetBall();
+gameLoop();
+</script>
+</body>
+</html>

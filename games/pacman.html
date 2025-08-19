@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pakman (Pac-Man) — Canvas</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  html,body{height:100%;margin:0;background:#111;color:#fff;font-family:system-ui,Segoe UI,Roboto}
+  .wrap{display:flex;flex-direction:column;align-items:center;padding:18px}
+  canvas{background:#000;border:4px solid #222;image-rendering:pixelated}
+  .hud{display:flex;gap:18px;margin:12px 0;align-items:center}
+  button{padding:8px 12px;border-radius:6px;border:0;background:#0b7; color:#002;font-weight:700;cursor:pointer}
+  .small{font-size:13px;color:#ddd}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>Pakman — arrow keys to move</h2>
+  <div class="hud">
+    <div>Score: <span id="score">0</span></div>
+    <div>Lives: <span id="lives">3</span></div>
+    <button id="startBtn">Start / Restart</button>
+    <div class="small">Eat all pellets. Eat power pellets to scare ghosts.</div>
+  </div>
+  <canvas id="game" width="588" height="660"></canvas>
+</div>
+
+<script>
+// --- CONFIG ---
+const tileSize = 28;           // pixels per tile
+const cols = 21;
+const rows = 23;
+const FPS = 60;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = cols * tileSize;
+canvas.height = rows * tileSize;
+
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const startBtn = document.getElementById('startBtn');
+
+// Map legend (string style for readability):
+// '#' wall
+// '.' pellet
+// 'o' power pellet
+// ' ' empty / corridor
+// '|' door (tunnel/passable)
+// Map is 21x23
+const rawMap = [
+"#####################",
+"#........#........#.#",
+"#.###.###.#.###.###.#",
+"#o###.###.#.###.###o#",
+"#.###.###.#.###.###.#",
+"#...................#",
+"#.###.#.####.#.###..#",
+"#.....#...#..#.....#",
+"#####.### ####.#####",
+"    #.#  G  #.#     ",
+"#####.# #### #.#####",
+"#.........#.........#",
+"#.###.###.#.###.###.#",
+"#o..#.....P.....#..o#",
+"###.#.#.#####.#.#.###",
+"#.....#...#..#.....#",
+"#.###.###.#.###.###.#",
+"#.###.###.#.###.###.#",
+"#...................#",
+"#####################",
+"                     ",
+"                     ",
+"                     "
+];
+
+// Normalize rawMap to exact rows; fill missing rows with spaces if necessary
+while(rawMap.length < rows) rawMap.push(" ".repeat(cols));
+
+// Parse map into array of arrays
+let map = [];
+for(let r=0;r<rows;r++){
+  const line = (rawMap[r] || "").padEnd(cols, ' ').slice(0, cols);
+  map.push(line.split(''));
+}
+
+// --- GAME STATE ---
+let score = 0;
+let lives = 3;
+let pelletsTotal = 0;
+let gameOver = true;
+let levelCleared = false;
+
+// Pacman state
+const pac = {
+  x: 0, y: 0,            // center pixel pos
+  dir: {x:0,y:0},       // current movement vector -1/0/1
+  nextDir: {x:0,y:0},   // buffered direction from input
+  speed: 2.4,           // pixels per frame
+  radius: tileSize*0.45,
+  mouth: 0,             // mouth open animation
+  powered: 0            // powered-up timer (frames)
+};
+
+// Ghosts (initialize later)
+let ghosts = [];
+
+// Input
+const keys = {};
+
+// Initialize game elements from map (pellets, pac start, ghosts)
+function initFromMap(){
+  pelletsTotal = 0;
+  ghosts = [];
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const ch = map[r][c];
+      if(ch === '.') pelletsTotal++;
+      if(ch === 'o') pelletsTotal++;
+      if(ch === 'P'){
+        pac.x = c*tileSize + tileSize/2;
+        pac.y = r*tileSize + tileSize/2;
+        map[r][c] = ' ';
+      }
+      if(ch === 'G'){
+        // create a ghost
+        ghosts.push({
+          x: c*tileSize + tileSize/2,
+          y: r*tileSize + tileSize/2,
+          dir: {x:1,y:0},
+          color: '#f33',
+          speed: 2.0,
+          scatterTimer: 0,
+          frightened: 0
+        });
+        map[r][c] = ' ';
+      }
+    }
+  }
+  // Count pellets in case map used '.' and 'o'
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) {
+    if(map[r][c] === '.' || map[r][c] === 'o') pelletsTotal++;
+  }
+}
+
+// --- UTILITIES ---
+function tileAtPx(x,y){
+  const c = Math.floor(x / tileSize);
+  const r = Math.floor(y / tileSize);
+  if(r<0||r>=rows||c<0||c>=cols) return '#';
+  return map[r][c];
+}
+function isWallTileAtTile(r,c){
+  if(r<0||r>=rows||c<0||c>=cols) return true;
+  return map[r][c] === '#';
+}
+function canMoveTo(px,py){
+  // Check collisions with walls using simple circle-box test
+  const r = Math.floor(py / tileSize);
+  const c = Math.floor(px / tileSize);
+  // if center inside wall tile -> blocked
+  if(isWallTileAtTile(r,c)) return false;
+  // check four neighbor walls that might intersect when moving between tiles
+  const pads = 2;
+  const checkPoints = [
+    {x:px - pac.radius + pads, y: py - pac.radius + pads},
+    {x:px + pac.radius - pads, y: py - pac.radius + pads},
+    {x:px - pac.radius + pads, y: py + pac.radius - pads},
+    {x:px + pac.radius - pads, y: py + pac.radius - pads}
+  ];
+  for(const pt of checkPoints){
+    const rr = Math.floor(pt.y / tileSize);
+    const cc = Math.floor(pt.x / tileSize);
+    if(isWallTileAtTile(rr,cc)) return false;
+  }
+  return true;
+}
+function tileCenter(c,r){ return {x:c*tileSize + tileSize/2, y:r*tileSize + tileSize/2}; }
+
+// --- INPUT ---
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowLeft') keys.left = true;
+  if(e.key === 'ArrowRight') keys.right = true;
+  if(e.key === 'ArrowUp') keys.up = true;
+  if(e.key === 'ArrowDown') keys.down = true;
+  // map to nextDir
+  if(!gameOver){
+    if(e.key === 'ArrowLeft') pac.nextDir = {x:-1,y:0};
+    if(e.key === 'ArrowRight') pac.nextDir = {x:1,y:0};
+    if(e.key === 'ArrowUp') pac.nextDir = {x:0,y:-1};
+    if(e.key === 'ArrowDown') pac.nextDir = {x:0,y:1};
+  } else {
+    // start on any arrow
+    if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
+      startGame();
+    }
+  }
+});
+window.addEventListener('keyup', e=>{
+  if(e.key === 'ArrowLeft') keys.left = false;
+  if(e.key === 'ArrowRight') keys.right = false;
+  if(e.key === 'ArrowUp') keys.up = false;
+  if(e.key === 'ArrowDown') keys.down = false;
+});
+
+// --- GAME LOGIC ---
+function resetPositions(){
+  initFromMap();
+  pac.dir = {x:0,y:0}; pac.nextDir = {x:0,y:0}; pac.powered = 0; pac.mouth = 0;
+  // reset ghosts to fixed spots (first four ghosts approach)
+  ghosts.forEach((g,i)=>{
+    g.x = (10 + (i%2)) * tileSize + tileSize/2;
+    g.y = (9 + Math.floor(i/2)) * tileSize + tileSize/2;
+    g.dir = {x: (i%2?1:-1), y:0};
+    g.frightened = 0;
+  });
+}
+
+function startGame(){
+  // create fresh copy of map with pellets
+  // Re-create map because we modify it during play for pellet consumption
+  map = rawMap.map(line => line.padEnd(cols,' ').slice(0,cols).split(''));
+  score = 0; lives = 3; gameOver = false; levelCleared = false;
+  initFromMap();
+  resetPositions();
+  updateHud();
+}
+
+function updateHud(){
+  scoreEl.textContent = score;
+  livesEl.textContent = lives;
+}
+
+function eatAt(px,py){
+  const c = Math.floor(px / tileSize);
+  const r = Math.floor(py / tileSize);
+  const ch = map[r] ? map[r][c] : '#';
+  if(ch === '.' || ch === 'o'){
+    if(ch === '.' ) score += 10;
+    if(ch === 'o' ) { score += 50; pac.powered = FPS * 8; // powered lasts 8 seconds
+                      ghosts.forEach(g=>g.frightened = FPS * 8);
+    }
+    map[r][c] = ' ';
+    pelletsTotal--;
+    updateHud();
+    if(pelletsTotal <= 0){
+      levelCleared = true;
+    }
+  }
+}
+
+function movePacman(){
+  // Attempt to change direction if possible (buffer)
+  const nextPx = pac.x + pac.nextDir.x * pac.speed;
+  const nextPy = pac.y + pac.nextDir.y * pac.speed;
+  if((pac.nextDir.x !== 0 || pac.nextDir.y !==0) && canMoveTo(nextPx,nextPy)){
+    pac.dir = {...pac.nextDir};
+  }
+  // Move in current dir if possible
+  const tryPx = pac.x + pac.dir.x * pac.speed;
+  const tryPy = pac.y + pac.dir.y * pac.speed;
+  if(canMoveTo(tryPx, tryPy)){
+    pac.x = tryPx; pac.y = tryPy;
+  } else {
+    // blocked; stop
+    pac.dir = {x:0,y:0};
+  }
+  // tunnel wrap left/right (if desired)
+  if(pac.x < -tileSize) pac.x = canvas.width + tileSize;
+  if(pac.x > canvas.width + tileSize) pac.x = -tileSize;
+  // animate mouth
+  pac.mouth = (pac.mouth + 0.18) % (Math.PI);
+  // pellet eat
+  eatAt(pac.x, pac.y);
+  if(pac.powered > 0) pac.powered--;
+}
+
+function ghostCanMove(g, nx, ny){
+  // Use simple check: check center and corners
+  return canMoveTo(nx,ny);
+}
+function randomDirExcept(exclude){
+  const opts = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}].filter(d=>{
+    return !(d.x === exclude.x && d.y === exclude.y) && !(d.x === -exclude.x && d.y === -exclude.y);
+  });
+  return opts[Math.floor(Math.random()*opts.length)] || {x:-exclude.x,y:-exclude.y};
+}
+
+function moveGhosts(){
+  ghosts.forEach(g=>{
+    // simple behavior:
+    // if frightened => slow and random
+    if(g.frightened > 0){
+      g.frightened--;
+      g.speed = 1.2;
+    } else {
+      g.speed = 1.8;
+    }
+    // At center of tile, pick a direction
+    const centeredX = Math.abs((g.x - tileSize/2) % tileSize - tileSize/2) < 0.5;
+    const centeredY = Math.abs((g.y - tileSize/2) % tileSize - tileSize/2) < 0.5;
+    if(centeredX && centeredY){
+      // evaluate possible directions (not reverse unless no choice)
+      const candidates = [];
+      const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+      dirs.forEach(d=>{
+        const nx = g.x + d.x * tileSize;
+        const ny = g.y + d.y * tileSize;
+        if(ghostCanMove(g, nx, ny)){
+          candidates.push(d);
+        }
+      });
+      // remove immediate reverse to avoid flipping
+      let choices = candidates.filter(d=>!(d.x === -g.dir.x && d.y === -g.dir.y));
+      if(choices.length === 0) choices = candidates;
+      // If pacman powered or frightened choose random; otherwise bias toward Pac-Man
+      if(g.frightened > 0){
+        g.dir = choices[Math.floor(Math.random()*choices.length)] || g.dir;
+      } else {
+        // bias: pick direction that reduces distance to pac
+        choices.sort((a,b)=>{
+          const da = distanceSq(g.x + a.x*tileSize, g.y + a.y*tileSize, pac.x, pac.y);
+          const db = distanceSq(g.x + b.x*tileSize, g.y + b.y*tileSize, pac.x, pac.y);
+          return da - db;
+        });
+        g.dir = choices[0] || g.dir;
+      }
+    }
+    // Move
+    const nx = g.x + g.dir.x * g.speed;
+    const ny = g.y + g.dir.y * g.speed;
+    if(ghostCanMove(g, nx, ny)){
+      g.x = nx; g.y = ny;
+    } else {
+      // bounce/backtrack pick random
+      g.dir = randomDirExcept(g.dir);
+    }
+
+    // collision with pacman
+    if(distanceSq(g.x, g.y, pac.x, pac.y) < (tileSize*0.7)*(tileSize*0.7)){
+      if(g.frightened > 0 || pac.powered > 0){
+        // eat ghost
+        score += 200;
+        updateHud();
+        // send ghost to scatter position
+        g.x = 10 * tileSize + tileSize/2;
+        g.y = 10 * tileSize + tileSize/2;
+        g.frightened = 0;
+      } else {
+        // pac dies
+        lives--;
+        updateHud();
+        if(lives <= 0){
+          gameOver = true;
+        } else {
+          // reset positions (but keep map)
+          pac.x = 13 * tileSize + tileSize/2;
+          pac.y = 14 * tileSize + tileSize/2;
+          pac.dir = {x:0,y:0}; pac.nextDir = {x:0,y:0};
+          ghosts.forEach((gg,i)=>{
+            gg.x = (10 + (i%2)) * tileSize + tileSize/2;
+            gg.y = (9 + Math.floor(i/2)) * tileSize + tileSize/2;
+            gg.dir = {x: (i%2?1:-1), y:0};
+            gg.frightened = 0;
+          });
+        }
+      }
+    }
+  });
+}
+
+function distanceSq(x1,y1,x2,y2){
+  const dx = x1-x2; const dy = y1-y2;
+  return dx*dx + dy*dy;
+}
+
+// --- RENDERING ---
+function draw(){
+  // clear
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // draw tiles/walls
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const ch = map[r][c];
+      const x = c*tileSize, y = r*tileSize;
+      if(ch === '#'){
+        ctx.fillStyle = '#003366';
+        ctx.fillRect(x, y, tileSize, tileSize);
+        // inner cut to look like wall
+        ctx.fillStyle = '#001a2b';
+        ctx.fillRect(x+3, y+3, tileSize-6, tileSize-6);
+      } else {
+        // small pellet
+        if(ch === '.' ){
+          ctx.fillStyle = '#ffecb3';
+          ctx.beginPath();
+          ctx.arc(x + tileSize/2, y + tileSize/2, 3.5, 0, Math.PI*2);
+          ctx.fill();
+        } else if(ch === 'o'){
+          ctx.fillStyle = '#ffeb3b';
+          ctx.beginPath();
+          ctx.arc(x + tileSize/2, y + tileSize/2, 7, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // draw Pac-Man
+  ctx.save();
+  ctx.translate(pac.x, pac.y);
+  // determine mouth angle by direction
+  const mouthOpen = 0.25 + Math.abs(Math.sin(pac.mouth)) * 0.6;
+  let ang = 0;
+  if(pac.dir.x === -1) ang = Math.PI;
+  else if(pac.dir.y === 1) ang = Math.PI/2;
+  else if(pac.dir.y === -1) ang = -Math.PI/2;
+  ctx.rotate(ang);
+  ctx.fillStyle = '#ffeb3b';
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.arc(0,0, pac.radius, mouthOpen*Math.PI, (2-mouthOpen)*Math.PI);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // draw ghosts
+  ghosts.forEach(g=>{
+    ctx.save();
+    ctx.translate(g.x, g.y);
+    const size = tileSize*0.8;
+    // body
+    ctx.fillStyle = (g.frightened>0||pac.powered>0) ? '#88aaff' : g.color;
+    ctx.beginPath();
+    ctx.arc(0, -size*0.1, size*0.45, Math.PI, 0);
+    ctx.lineTo(size*0.45, size*0.45);
+    // wavy bottom
+    const step = 6;
+    for(let i=0;i<step;i++){
+      const px = size*0.45 - (i*(size*0.9/step));
+      const py = size*0.45 - ((i%2===0)?8:-8);
+      ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(-6, -4, 6, 8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8, -4, 6, 8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(-5 + (g.dir.x*2), -2 + (g.dir.y*2), 2.5, 3.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9 + (g.dir.x*2), -2 + (g.dir.y*2), 2.5, 3.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  // overlay messages
+  if(gameOver){
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, canvas.height/2 - 60, canvas.width, 120);
+    ctx.fillStyle = '#fff';
+    ctx.font = '28px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Game Over - Press Start', canvas.width/2, canvas.height/2);
+  } else if(levelCleared){
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, canvas.height/2 - 60, canvas.width, 120);
+    ctx.fillStyle = '#fff';
+    ctx.font = '28px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Level Cleared! Press Start', canvas.width/2, canvas.height/2);
+  }
+}
+
+// --- MAIN LOOP ---
+let lastFrame = 0;
+function loop(ts){
+  const dt = ts - lastFrame;
+  lastFrame = ts;
+  if(!gameOver){
+    movePacman();
+    moveGhosts();
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// --- Buttons ---
+startBtn.addEventListener('click', ()=> startGame());
+
+// initialize minimal map and show instructions
+(function init(){
+  // Replace P and G on rawMap into working map copy
+  map = rawMap.map(line => line.padEnd(cols,' ').slice(0,cols).split(''));
+  initFromMap();
+  draw();
+  updateHud();
+})();
+</script>
+</body>
+</html>
