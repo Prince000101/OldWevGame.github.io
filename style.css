@@ -1,58 +1,164 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-body {
-  margin: 0;
-  font-family: 'Press Start 2P', cursive;
-  background: linear-gradient(135deg, #000000, #1a1a1a);
-  color: #fff;
-  text-align: center;
+/* Responsive styles for index and game pages */
+
+/* Variables */
+:root{
+  --bg:#0b1020;
+  --card:#0f1724;
+  --accent:#ffcc33;
+  --muted:#9aa4b2;
+  --glass: rgba(255,255,255,0.04);
+  --radius:12px;
+  --max-width:1200px;
+  --gap:18px;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-header {
-  padding: 30px 10px;
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:var(--font-sans);
+  background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.02), transparent 20%),
+              linear-gradient(180deg, #05060b 0%, #0b1020 100%);
+  color:#e6eef8;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:24px;
 }
 
-.title {
-  font-size: 2.5rem;
-  color: #ff0080;
-  text-shadow: 0 0 8px #ff0080, 0 0 20px #00eaff;
+/* Layout wrapper */
+header{ text-align:center; margin-bottom:18px; }
+.title{ font-size:clamp(20px, 4vw, 36px); margin:6px 0; letter-spacing:0.6px; }
+.subtitle{ color:var(--muted); margin:0 0 12px 0; font-size:clamp(12px,2.5vw,16px) }
+
+/* Gallery grid */
+.gallery{
+  width:100%;
+  max-width:var(--max-width);
+  display:grid;
+  gap:var(--gap);
+  grid-template-columns: repeat( auto-fit, minmax(160px, 1fr) );
+  align-items:start;
+  padding:12px;
 }
 
-.subtitle {
-  font-size: 1rem;
-  color: #bbb;
-  margin-top: 10px;
+/* Game card */
+.game-card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:var(--radius);
+  padding:12px;
+  text-decoration:none;
+  color:inherit;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  transition: transform .18s ease, box-shadow .18s ease;
+  min-height:180px;
 }
 
-.gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 25px;
-  padding: 40px;
+/* Hover / focus */
+.game-card:hover, .game-card:focus{
+  transform:translateY(-6px);
+  box-shadow: 0 18px 36px rgba(2,6,23,0.75);
+  outline:none;
 }
 
-.game-card {
-  background: #111;
-  padding: 20px;
-  border-radius: 12px;
-  transition: transform 0.2s ease, box-shadow 0.3s ease;
-  text-decoration: none;
-  color: white;
+/* Images responsive and consistent aspect */
+.game-img{
+  width:100%;
+  height:auto;
+  max-height:140px;
+  object-fit:contain;
+  border-radius:8px;
+  background:var(--glass);
+  padding:8px;
 }
 
-.game-card img {
-  width: 100%;
-  height: 150px;
-  object-fit: contain;
+/* Titles */
+.game-card h2{
+  margin:0;
+  font-size:clamp(14px,2.2vw,18px);
+  text-align:center;
+  color:#f2f7ff;
 }
 
-.game-card:hover {
-  transform: scale(1.08);
-  box-shadow: 0 0 20px #ff0080;
+/* Footer */
+footer{ margin-top:20px; color:var(--muted); font-size:13px; }
+
+/* Small devices: tighten spacing */
+@media (max-width:420px){
+  body{ padding:14px; }
+  .gallery{ gap:12px; }
+  .game-card{ padding:10px; min-height:150px; }
+  .game-img{ max-height:110px; padding:6px; }
 }
 
-footer {
-  margin: 20px 0;
-  font-size: 0.8rem;
-  color: #666;
+/* Larger screens: more columns and spacing */
+@media (min-width:1200px){
+  .gallery{ gap:22px; grid-template-columns: repeat(4, 1fr); }
+  .game-card{ min-height:200px; }
+  .game-img{ max-height:160px; }
 }
+
+/* Utility: full-viewport game container used by game pages */
+.game-page-root{
+  min-height:100vh;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  padding:18px;
+}
+
+/* Responsive game canvas / iframe wrapper:
+   preserves aspect ratio and scales to viewport */
+.game-container{
+  width:100%;
+  max-width:1100px;
+  margin:18px auto;
+  display:grid;
+  place-items:center;
+}
+
+/* Using aspect-ratio for safe scaling; fallback uses padding-top */
+.game-stage{
+  width:100%;
+  aspect-ratio:16/9; /* games designed at 16:9 will scale */
+  max-height:78vh; /* don't overflow the viewport vertically */
+  border-radius:10px;
+  overflow:hidden;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Fallback for browsers without aspect-ratio */
+.game-stage.fallback{
+  position:relative;
+  height:0;
+  padding-top:56.25%; /* 16:9 fallback */
+}
+
+/* Make canvas or iframe fill stage */
+.game-stage > canvas,
+.game-stage > iframe,
+.game-stage > video{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+/* Controls area below stage */
+.game-controls{ width:100%; max-width:1100px; color:var(--muted); margin-top:10px; text-align:center; font-size:13px; }
+
+/* Accessibility focus outlines for keyboard users */
+a:focus{ outline: 3px solid rgba(255,204,51,0.18); outline-offset:3px; border-radius:8px; }

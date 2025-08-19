@@ -1,128 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Smooth Pong</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smooth Pong — Responsive & Touch</title>
   <style>
-    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    canvas { background: #111; display: block; }
+    :root{ --bg:#071021; --panel:#0f1724; --accent:#ffcc33; --muted:#9aa4b2; --white:#eef6ff; }
+    html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;color:var(--white);background:
+      radial-gradient(circle at 10% 10%, rgba(255,255,255,0.02), transparent 15%),
+      linear-gradient(180deg,#03060b,#071021);display:flex;flex-direction:column;align-items:center;}
+    header{width:100%;max-width:1100px;padding:14px 18px;text-align:center}
+    h1{margin:0;font-size:clamp(18px,3.8vw,30px)}
+    p.subtitle{margin:6px 0 0;color:var(--muted);font-size:13px}
+    main{width:100%;max-width:1100px;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:12px}
+    .panel{width:100%;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));border-radius:12px;padding:10px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    .stage{width:100%;aspect-ratio:16/9;max-height:75vh;border-radius:10px;overflow:hidden;display:grid;place-items:center;background:#000}
+    canvas{display:block;width:100%;height:100%}
+    .controls{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px;flex-wrap:wrap}
+    .controls .left{display:flex;gap:8px;align-items:center}
+    .btn{background:var(--accent);color:#071021;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    .muted{color:var(--muted);font-size:13px}
+    .score{font-weight:700;font-size:18px;color:var(--white)}
+    /* touch controls overlay (mobile) */
+    .touch-areas{position:absolute;inset:0;display:flex;pointer-events:none}
+    .touch-col{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:12px;pointer-events:auto}
+    .touch-btn{background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:center;color:var(--white);font-weight:700;user-select:none}
+    .touch-btn:active{background:rgba(255,255,255,0.12)}
+    /* hide on large screens */
+    @media(min-width:800px){ .touch-areas{display:none} }
+    footer{width:100%;max-width:1100px;text-align:center;padding:10px 18px;color:var(--muted);font-size:13px}
+    /* small screens adjustments */
+    @media(max-width:420px){
+      .controls{gap:6px}
+      .btn{padding:8px 10px}
+      .touch-btn{padding:14px}
+    }
   </style>
 </head>
 <body>
-<canvas id="pong" width="800" height="500"></canvas>
+  <header>
+    <h1>Smooth Pong</h1>
+    <p class="subtitle">Responsive, touch-friendly controls, CPU opponent and fullscreen. Tap controls on phone — keyboard on desktop (W/S, ArrowUp/ArrowDown).</p>
+  </header>
+
+  <main>
+    <div class="panel" style="position:relative;width:100%">
+      <div class="stage" id="stage">
+        <canvas id="pong"></canvas>
+        <!-- Touch overlay (mobile): left = player, right = optional second player/serve -->
+        <div class="touch-areas" style="pointer-events:none">
+          <div class="touch-col" id="leftTouch" style="pointer-events:auto">
+            <div class="touch-btn" id="touch-up">▲</div>
+            <div style="height:8px"></div>
+            <div class="touch-btn" id="touch-down">▼</div>
+          </div>
+          <div class="touch-col" style="pointer-events:none"></div>
+          <div class="touch-col" id="rightTouch" style="pointer-events:auto">
+            <div class="touch-btn" id="touch-serve" title="Tap to serve / pause">⏯</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="left">
+          <div class="score" id="score">0 — 0</div>
+          <div style="width:12px"></div>
+          <div class="muted" id="status">Ready</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="restart">Restart</button>
+          <button class="btn" id="fs">Fullscreen</button>
+          <select id="difficulty" style="padding:8px;border-radius:8px;background:#081224;color:var(--white);border:none">
+            <option value="0.9">Easy</option>
+            <option value="0.7" selected>Normal</option>
+            <option value="0.5">Hard</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>Made with ❤️ — Use landscape on phones for best experience</footer>
+
 <script>
-const canvas = document.getElementById("pong");
-const ctx = canvas.getContext("2d");
+(() => {
+  const canvas = document.getElementById('pong');
+  const stage = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const statusEl = document.getElementById('status');
+  const restartBtn = document.getElementById('restart');
+  const fsBtn = document.getElementById('fs');
+  const difficultySel = document.getElementById('difficulty');
 
-const paddleHeight = 100, paddleWidth = 15;
-let leftPaddle = { x: 10, y: canvas.height/2 - paddleHeight/2, dy: 0 };
-let rightPaddle = { x: canvas.width - 25, y: canvas.height/2 - paddleHeight/2, dy: 0 };
-let ball = { x: canvas.width/2, y: canvas.height/2, size: 12, speedX: 4, speedY: 4 };
-
-const keys = {};
-
-// Draw functions
-function drawRect(x, y, w, h, color) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, w, h);
-}
-
-function drawCircle(x, y, r, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawNet() {
-  for (let i = 0; i < canvas.height; i += 20) {
-    drawRect(canvas.width/2 - 1, i, 2, 10, "white");
+  // responsive resize using devicePixelRatio
+  function resizeCanvas() {
+    const rect = stage.getBoundingClientRect();
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // scale drawing to CSS pixels
   }
-}
+  window.addEventListener('resize', resizeCanvas, { passive: true });
+  resizeCanvas();
 
-// Movement
-function movePaddles() {
-  leftPaddle.y += leftPaddle.dy;
-  rightPaddle.y += rightPaddle.dy;
+  // game state
+  let W = canvas.clientWidth, H = canvas.clientHeight;
+  function updateWH(){ W = canvas.clientWidth; H = canvas.clientHeight; }
+  updateWH();
 
-  // prevent paddles from going off-screen
-  leftPaddle.y = Math.max(0, Math.min(canvas.height - paddleHeight, leftPaddle.y));
-  rightPaddle.y = Math.max(0, Math.min(canvas.height - paddleHeight, rightPaddle.y));
-}
-
-function moveBall() {
-  ball.x += ball.speedX;
-  ball.y += ball.speedY;
-
-  // top & bottom collision
-  if (ball.y - ball.size < 0 || ball.y + ball.size > canvas.height) {
-    ball.speedY *= -1;
+  const paddleWidth = Math.max(10, Math.round(W * 0.02));
+  function makePaddles() {
+    return {
+      left: { x: 10, y: H/2 - paddleH/2, w: paddleWidth, h: paddleH, dy: 0 },
+      right: { x: W - 10 - paddleWidth, y: H/2 - paddleH/2, w: paddleWidth, h: paddleH, dy: 0 }
+    };
   }
 
-  // left paddle
-  if (ball.x - ball.size < leftPaddle.x + paddleWidth &&
-      ball.y > leftPaddle.y &&
-      ball.y < leftPaddle.y + paddleHeight) {
-    ball.speedX *= -1.05; // bounce & speed up
-    ball.x = leftPaddle.x + paddleWidth + ball.size;
+  let paddleH = Math.max(60, Math.round(H * 0.18));
+  let paddles = makePaddles();
+
+  let ball = { x: W/2, y: H/2, r: Math.max(6, Math.round(Math.min(W,H)*0.015)), vx: 0, vy: 0, speed: Math.max(3.5, Math.min(W,H)*0.01) };
+  let scores = { left: 0, right: 0 };
+  let playing = false;
+  let paused = false;
+  let lastTime = 0;
+  let aiFactor = parseFloat(difficultySel.value); // lower = faster/harder
+
+  function resetPositions(serveRight = Math.random() > 0.5) {
+    updateWH();
+    paddleH = Math.max(60, Math.round(H * 0.18));
+    paddles = {
+      left: { x: 10, y: H/2 - paddleH/2, w: paddleWidth, h: paddleH, dy: 0 },
+      right: { x: W - 10 - paddleWidth, y: H/2 - paddleH/2, w: paddleWidth, h: paddleH, dy: 0 }
+    };
+    ball.r = Math.max(6, Math.round(Math.min(W,H)*0.015));
+    ball.x = W/2; ball.y = H/2;
+    ball.speed = Math.max(3.5, Math.min(W,H)*0.01);
+    const angle = (Math.random()*0.6 - 0.3); // slight vertical angle
+    ball.vx = serveRight ? ball.speed : -ball.speed;
+    ball.vy = angle * ball.speed * 0.9;
+    resizeCanvas();
   }
 
-  // right paddle
-  if (ball.x + ball.size > rightPaddle.x &&
-      ball.y > rightPaddle.y &&
-      ball.y < rightPaddle.y + paddleHeight) {
-    ball.speedX *= -1.05; // bounce & speed up
-    ball.x = rightPaddle.x - ball.size;
+  function serve() { if (!playing) { playing = true; paused = false; statusEl.textContent = 'Playing'; resetPositions(Math.random()>0.5); } }
+
+  // drawing
+  function draw() {
+    // clear
+    ctx.clearRect(0, 0, W, H);
+    // net
+    ctx.fillStyle = '#ffffff20';
+    const segment = Math.max(6, Math.round(H * 0.03));
+    for (let y=0;y<H;y+=segment*1.6) ctx.fillRect(W/2 - 1, y, 2, segment);
+    // paddles
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(paddles.left.x, paddles.left.y, paddles.left.w, paddles.left.h);
+    ctx.fillRect(paddles.right.x, paddles.right.y, paddles.right.w, paddles.right.h);
+    // ball
+    ctx.beginPath(); ctx.fillStyle = '#ffffff'; ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
   }
 
-  // reset ball if out of bounds
-  if (ball.x - ball.size < 0 || ball.x + ball.size > canvas.width) {
-    resetBall();
+  // input
+  const keys = {};
+  window.addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' '){ if(!playing) serve(); else paused = !paused; statusEl.textContent = paused ? 'Paused' : 'Playing'; } });
+  window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+  // touch controls
+  const touchUp = document.getElementById('touch-up');
+  const touchDown = document.getElementById('touch-down');
+  const touchServe = document.getElementById('touch-serve');
+
+  let touchState = { up:false, down:false };
+  function bindTouch(btn, setter, val){
+    if(!btn) return;
+    btn.addEventListener('touchstart', e => { e.preventDefault(); setter(val); }, { passive:false });
+    btn.addEventListener('touchend', e => { e.preventDefault(); setter(false); }, { passive:false });
+    btn.addEventListener('mousedown', e => { e.preventDefault(); setter(val); });
+    btn.addEventListener('mouseup', e => { e.preventDefault(); setter(false); });
+    btn.addEventListener('mouseleave', e => { e.preventDefault(); setter(false); });
   }
-}
+  bindTouch(touchUp, v => touchState.up = v, true);
+  bindTouch(touchDown, v => touchState.down = v, true);
+  bindTouch(touchServe, () => { if (!playing) serve(); else paused = !paused; statusEl.textContent = paused ? 'Paused' : 'Playing'; });
 
-function resetBall() {
-  ball.x = canvas.width/2;
-  ball.y = canvas.height/2;
-  ball.speedX = (Math.random() > 0.5 ? 4 : -4);
-  ball.speedY = (Math.random() > 0.5 ? 4 : -4);
-}
+  // restart & fullscreen & difficulty
+  restartBtn.addEventListener('click', () => { scores.left = scores.right = 0; playing=false; paused=false; statusEl.textContent='Ready'; updateScore(); resetPositions(); draw(); });
+  fsBtn.addEventListener('click', async () => { try { if (!document.fullscreenElement) await stage.requestFullscreen(); else await document.exitFullscreen(); } catch(e) { console.warn(e); } });
+  difficultySel.addEventListener('change', ()=> { aiFactor = parseFloat(difficultySel.value); });
 
-// Input handling
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup", e => keys[e.key] = false);
+  function updateScore(){ scoreEl.textContent = scores.left + ' — ' + scores.right; }
 
-function handleInput() {
-  // Left paddle (W/S)
-  if (keys["w"]) leftPaddle.dy = -6;
-  else if (keys["s"]) leftPaddle.dy = 6;
-  else leftPaddle.dy = 0;
+  // main loop
+  function step(ts) {
+    if (!lastTime) lastTime = ts;
+    const dt = Math.min(40, ts - lastTime);
+    lastTime = ts;
+    if (playing && !paused) {
+      // paddle input (keyboard)
+      const speed = Math.max(5, Math.round(H*0.02));
+      let leftDy = 0;
+      if (keys['w'] || keys['W']) leftDy = -speed;
+      else if (keys['s'] || keys['S']) leftDy = speed;
+      // touch input overrides
+      if (touchState.up) leftDy = -speed;
+      if (touchState.down) leftDy = speed;
+      paddles.left.y += leftDy * (dt/16);
 
-  // Right paddle (Arrow Up/Down)
-  if (keys["ArrowUp"]) rightPaddle.dy = -6;
-  else if (keys["ArrowDown"]) rightPaddle.dy = 6;
-  else rightPaddle.dy = 0;
-}
+      // clamp
+      paddles.left.y = Math.max(0, Math.min(H - paddles.left.h, paddles.left.y));
 
-// Game loop
-function gameLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // simple AI for right paddle
+      const targetY = ball.y - paddles.right.h/2;
+      const aiSpeed = Math.max(2, Math.round(H*0.012) / aiFactor);
+      if (paddles.right.y + paddles.right.h/2 < ball.y - 6) paddles.right.y += aiSpeed * (dt/16);
+      else if (paddles.right.y + paddles.right.h/2 > ball.y + 6) paddles.right.y -= aiSpeed * (dt/16);
+      paddles.right.y = Math.max(0, Math.min(H - paddles.right.h, paddles.right.y));
 
-  drawNet();
-  drawRect(leftPaddle.x, leftPaddle.y, paddleWidth, paddleHeight, "white");
-  drawRect(rightPaddle.x, rightPaddle.y, paddleWidth, paddleHeight, "white");
-  drawCircle(ball.x, ball.y, ball.size, "white");
+      // ball physics
+      ball.x += ball.vx * (dt/16);
+      ball.y += ball.vy * (dt/16);
 
-  handleInput();
-  movePaddles();
-  moveBall();
+      // top/bottom bounce
+      if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy *= -1; }
+      if (ball.y + ball.r > H) { ball.y = H - ball.r; ball.vy *= -1; }
 
-  requestAnimationFrame(gameLoop);
-}
+      // paddle collisions
+      // left
+      if (ball.x - ball.r < paddles.left.x + paddles.left.w &&
+          ball.y > paddles.left.y && ball.y < paddles.left.y + paddles.left.h) {
+        ball.x = paddles.left.x + paddles.left.w + ball.r;
+        ball.vx = Math.abs(ball.vx) * 1.03; // slightly speed up
+        // give vertical kick based on hit position
+        const rel = (ball.y - (paddles.left.y + paddles.left.h/2)) / (paddles.left.h/2);
+        ball.vy = rel * ball.speed * 1.2;
+      }
+      // right
+      if (ball.x + ball.r > paddles.right.x &&
+          ball.y > paddles.right.y && ball.y < paddles.right.y + paddles.right.h) {
+        ball.x = paddles.right.x - ball.r;
+        ball.vx = -Math.abs(ball.vx) * 1.03;
+        const rel = (ball.y - (paddles.right.y + paddles.right.h/2)) / (paddles.right.h/2);
+        ball.vy = rel * ball.speed * 1.2;
+      }
 
-resetBall();
-gameLoop();
+      // left/right score
+      if (ball.x + ball.r < 0) { // right scores
+        scores.right++; playing = false; statusEl.textContent = 'Point — Right'; updateScore(); resetPositions(true);
+      } else if (ball.x - ball.r > W) { // left scores
+        scores.left++; playing = false; statusEl.textContent = 'Point — Left'; updateScore(); resetPositions(false);
+      }
+    }
+    // draw on every frame so resize updates too
+    draw();
+    requestAnimationFrame(step);
+  }
+
+  // initial setup
+  resetPositions();
+  updateScore();
+  draw();
+  requestAnimationFrame(step);
+
+  // ensure canvas resizes when container changes (e.g., orientation)
+  const ro = new ResizeObserver(() => { resizeCanvas(); resetPositions(); draw(); });
+  ro.observe(stage);
+
+  // accessibility: click/tap to serve
+  canvas.addEventListener('click', () => { if (!playing) serve(); });
+
+  // prevent gestures that break controls
+  ['touchmove','gesturestart','gesturechange','gestureend'].forEach(evt => window.addEventListener(evt, e => {}, {passive:true}));
+})();
 </script>
 </body>
 </html>

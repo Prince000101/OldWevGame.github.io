@@ -1,0 +1,67 @@
+<!-- Game page template — copy for each game and update title + src -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Game - Replace with game name</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="arcade-bg">
+  <header style="width:100%;max-width:1100px;margin:18px auto;text-align:center">
+    <h1 style="margin:0;font-size:clamp(18px,3.5vw,28px)">Game Title Here</h1>
+    <p style="margin:6px 0 0;color:var(--muted)">Controls: arrow keys / WASD / touch</p>
+  </header>
+
+  <main class="game-page-root">
+    <div class="game-container">
+      <div class="game-stage" id="game-stage" role="region" aria-label="Game stage">
+        <!-- Replace the element below with your game's canvas, iframe or embed.
+             Canvas example: <canvas id="gameCanvas"></canvas>
+             Iframe example (if your game is a standalone page): <iframe src="mygame.html" frameborder="0" sandbox="allow-scripts allow-same-origin"></iframe>
+        -->
+        <canvas id="gameCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="game-controls">
+      <p>Tip: For best experience rotate device to landscape and use full screen if available.</p>
+      <button id="fs-btn" style="padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#0b1020;cursor:pointer">Enter Fullscreen</button>
+    </div>
+  </main>
+
+  <footer style="width:100%;max-width:1100px;margin:18px auto;text-align:center;color:var(--muted)">
+    <p><a href="../index.html" style="color:inherit;text-decoration:underline">Back to Arcade</a></p>
+  </footer>
+
+  <script>
+    // Basic fullscreen helper
+    (function(){
+      const fsBtn = document.getElementById('fs-btn');
+      const stage = document.getElementById('game-stage');
+      fsBtn?.addEventListener('click', async () => {
+        if (!document.fullscreenElement) {
+          try { await stage.requestFullscreen(); } catch(e){ console.warn(e) }
+        } else {
+          try { await document.exitFullscreen(); } catch(e){ console.warn(e) }
+        }
+      });
+
+      // If your game uses a canvas, ensure it resizes to stage:
+      const canvas = document.getElementById('gameCanvas');
+      if(canvas){
+        const resize = ()=> {
+          const rect = stage.getBoundingClientRect();
+          canvas.width = Math.floor(rect.width * devicePixelRatio);
+          canvas.height = Math.floor(rect.height * devicePixelRatio);
+          canvas.style.width = rect.width + 'px';
+          canvas.style.height = rect.height + 'px';
+          // optionally scale context: ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)
+        };
+        window.addEventListener('resize', resize);
+        resize();
+      }
+    })();
+  </script>
+</body>
+</html>
