@@ -2,6 +2,131 @@
 
 /* Responsive styles for index and game pages */
 
+/* --- immersive theme tokens (more properties, typography, glows) --- */
+:root{
+  /* black & white tokens */
+  --bg: #000000;
+  --bg-grad: linear-gradient(180deg,#000,#0a0a0a);
+  --panel: #0f0f0f;
+  --panel-grad: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+  --accent: #ffffff;
+  --accent-2: #e6e6e6;
+  --muted: #cfcfcf;
+  --glass: rgba(255,255,255,0.03);
+  --card: #0d0d0d;
+  --white: #ffffff;
+  --danger: #ff6b6b;
+  --canvas-bg: linear-gradient(180deg,#000,#0a0a0a);
+  --shadow-1: 0 8px 28px rgba(0,0,0,0.6);
+  --radius: 10px;
+  --title-font-size: clamp(20px, 4vw, 36px);
+}
+
+/* explicit bw theme class (applied site-wide by JS) */
+.theme-bw {
+  --bg: #000000;
+  --bg-grad: linear-gradient(180deg,#000,#0a0a0a);
+  --panel: #0f0f0f;
+  --panel-grad: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+  --accent: #ffffff;
+  --accent-2: #e6e6e6;
+  --muted: #cfcfcf;
+  --card: #0d0d0d;
+  --canvas-bg: linear-gradient(180deg,#000,#0a0a0a);
+  --text-glow: none;
+}
+
+/* header layout: theme list top-right */
+header{
+  width:100%;
+  max-width:1200px;
+  margin:0 auto 18px;
+  position:relative;
+  padding:12px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.header-inner{
+  width:100%;
+  max-width:1200px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* theme list (simple list in top-right) */
+.theme-list{
+  position:absolute;
+  right:16px;
+  top:12px;
+  list-style:none;
+  margin:0;
+  padding:6px;
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+.theme-list li{
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.06);
+  padding:6px 10px;
+  border-radius:8px;
+  color:var(--white);
+  cursor:default;
+  font-weight:700;
+  font-size:13px;
+}
+
+/* basic site tokens applied to common elements */
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  color: var(--white);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:18px;
+}
+
+.game-card{
+  background: var(--card);
+  color:var(--white);
+  border-radius:var(--radius);
+  padding:12px;
+  text-decoration:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+}
+
+/* keep images monochrome-friendly */
+.game-img{ filter: grayscale(100%) contrast(110%); }
+
+/* other UI */
+.title{ font-size:var(--title-font-size); margin:0; }
+.subtitle{ color:var(--muted); margin:4px 0 12px 0; }
+
+/* ensure canvas / games inherit background */
+canvas{ background: var(--canvas-bg) !important; }
+
+/* minimal responsive */
+@media (max-width:720px){
+  .theme-list{ right:12px; top:8px; }
+  .theme-list li{ padding:6px 8px; font-size:12px; }
+}
+
+/* rest of your existing stylesheet below */
+/* ...existing code... */
+
+/* Responsive styles for index and game pages */
+
 /* Variables */
 :root{
   --bg:#0b1020;
@@ -162,3 +287,351 @@ footer{ margin-top:20px; color:var(--muted); font-size:13px; }
 
 /* Accessibility focus outlines for keyboard users */
 a:focus{ outline: 3px solid rgba(255,204,51,0.18); outline-offset:3px; border-radius:8px; }
+
+/* ...existing code... */
+
+:root{
+  --bg-dark: #000000;
+  --panel-dark: #0f0f0f;
+  --text-dark: #ffffff;
+
+  --bg-light: #f5f7fb;
+  --panel-light: #ffffff;
+  --text-light: #0b1120;
+
+  --accent: #000; /* accent adapts via mix-blend or explicit color below */
+  --radius: 10px;
+  --shadow: 0 8px 28px rgba(0,0,0,0.25);
+  --title-font-size: clamp(20px, 4vw, 36px);
+}
+
+/* default to dark theme */
+.theme-dark {
+  --bg: var(--bg-dark);
+  --panel: var(--panel-dark);
+  --text: var(--text-dark);
+  --canvas-bg: linear-gradient(180deg,#000,#0a0a0a);
+  --muted: #cfcfcf;
+  --title-glow: 0 0 8px rgba(255,255,255,0.03);
+  color-scheme: dark;
+}
+
+.theme-light {
+  --bg: var(--bg-light);
+  --panel: var(--panel-light);
+  --text: var(--text-light);
+  --canvas-bg: linear-gradient(180deg,#eef4fb,#e9f0fb);
+  --muted: #50708a;
+  --title-glow: 0 0 6px rgba(0,0,0,0.03);
+  color-scheme: light;
+}
+
+/* apply tokens */
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:18px;
+  transition: background .22s ease, color .18s ease;
+}
+
+.panel, .game-card, header, .board-wrap {
+  background: var(--panel);
+  color: var(--text);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: background .22s ease, color .18s ease, box-shadow .22s ease;
+}
+
+/* header / title - more "cool and symmetrical" */
+header{
+  width:100%;
+  max-width:1200px;
+  margin:0 auto 18px;
+  position:relative;
+  padding:12px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.header-inner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+
+/* New symmetrical title style */
+.title{
+  font-family: "Press Start 2P", system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  font-weight:700;
+  letter-spacing:0.6px;
+  font-size:var(--title-font-size);
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  text-align:center;
+  text-transform:none;
+  color:var(--text);
+  text-shadow: var(--title-glow);
+}
+.title .decorate{
+  opacity:0.9;
+  font-size:0.85em;
+  color:var(--muted);
+}
+
+/* subtitle */
+.subtitle{ color:var(--muted); margin:0; font-size:14px; }
+
+/* theme toggle (top-right) */
+.theme-toggle{
+  position:absolute;
+  right:16px;
+  top:12px;
+  background:transparent;
+  border:1px solid rgba(0,0,0,0.06);
+  color:var(--text);
+  padding:8px 10px;
+  border-radius:8px;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  transition: transform .12s ease, background .12s ease;
+}
+.theme-toggle:active{ transform:translateY(1px); }
+.theme-toggle .label{ font-weight:700; font-size:13px; color:var(--muted); }
+
+/* keep images adapting */
+.game-img{ filter: grayscale(100%) contrast(110%); }
+
+/* ensure canvas inherits background */
+canvas{ background: var(--canvas-bg) !important; }
+
+/* Card style applied to .card (used by .game-card) */
+/* Based on your provided card — adapted to site tokens and accessibility */
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  height: 220px;
+  background-color: var(--panel);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  perspective: 1000px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.02);
+  transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.45s;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Media (image) layer */
+.card__media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(100%) contrast(110%);
+  transform-origin: center;
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.45s;
+}
+
+/* Floating SVG/icon if present; kept small for accessibility */
+.card svg { width: 48px; height: 48px; fill: currentColor; transition: all 0.45s; }
+
+/* Content panel that "flips up" on hover */
+.card__content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60%;
+  padding: 18px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(0,0,0,0.20), rgba(0,0,0,0.32));
+  transform: translateY(100%);
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Title and description inside the content */
+.card__title {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.card__description {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+/* Hover / focus interaction */
+.card:hover,
+.card:focus {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 44px rgba(0,0,0,0.6);
+  outline: none;
+}
+
+.card:hover .card__media,
+.card:focus .card__media {
+  transform: scale(1.06);
+  opacity: 0.7;
+}
+
+.card:hover .card__content,
+.card:focus .card__content {
+  transform: translateY(0%);
+}
+
+/* Small screens: slightly smaller cards */
+@media (max-width:600px){
+  .card { max-width: 100%; height: 180px; }
+  .card__content { height: 58%; padding: 14px; }
+  .card__title { font-size: 16px; }
+  .card__description { font-size: 12px; }
+}
+
+/* utility: make gallery items centered and spaced */
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; width:100%; max-width:var(--max-width); margin:0 auto; padding:0 12px; }
+
+/* Live animated background for home page (.bg-anim) */
+/* Uses two performant layers (blurred color blobs + starfield) animated with transform/background-position.
+   Respects prefers-reduced-motion and is pointer-events: none so it won't interfere with UI. */
+
+.bg-anim{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  isolation: isolate; /* keep blend effects contained */
+  background: var(--bg);
+  will-change: transform;
+}
+
+/* Layer 1: large, blurred color blobs + subtle gradient — uses multiple radial-gradients */
+.bg-anim::before{
+  content: "";
+  position: absolute;
+  inset: -10%;
+  background-image:
+    radial-gradient(600px 400px at 8% 20%, rgba(255,120,80,0.08), transparent 18%),
+    radial-gradient(520px 360px at 88% 78%, rgba(100,170,255,0.07), transparent 16%),
+    radial-gradient(420px 300px at 52% 40%, rgba(160,90,255,0.045), transparent 14%),
+    linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.06));
+  background-repeat: no-repeat;
+  filter: blur(36px) saturate(120%);
+  transform: translateZ(0);
+  will-change: background-position, transform;
+  animation: bgGradientShift 18s linear infinite;
+  opacity: 0.95;
+}
+
+/* Layer 2: subtle starfield using tiny radial gradients repeated — animated to slowly drift */
+.bg-anim::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.95) 0.6px, rgba(255,255,255,0.0) 1px),
+    radial-gradient(rgba(255,255,255,0.75) 0.9px, rgba(255,255,255,0.0) 1.6px);
+  background-size: 3px 3px, 140px 140px;
+  background-position: 20% 10%, 0% 0%;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  filter: blur(.2px);
+  will-change: background-position;
+  animation: starDrift 42s linear infinite;
+}
+
+/* Vignette (center emphasis) */
+.bg-anim .vignette,
+.bg-anim::marker { /* fallback if needed */ }
+.bg-anim::marker{} /* noop to keep tools happy */
+
+/* small, subtle noise via layered gradient (cheap) */
+.bg-anim{
+  background-image: var(--bg-grad);
+}
+.bg-anim::before,
+.bg-anim::after{
+  pointer-events: none;
+}
+
+/* Keyframes */
+@keyframes bgGradientShift{
+  0%{
+    background-position:
+      3% 10%,
+      92% 84%,
+      52% 42%,
+      0% 0%;
+    transform: translate3d(0,0,0);
+  }
+  50%{
+    background-position:
+      8% 22%,
+      86% 70%,
+      58% 34%,
+      0% 0%;
+    transform: translate3d(0,-4px,0);
+  }
+  100%{
+    background-position:
+      3% 10%,
+      92% 84%,
+      52% 42%,
+      0% 0%;
+    transform: translate3d(0,0,0);
+  }
+}
+
+@keyframes starDrift{
+  0%{ background-position: 10% 10%, 0% 0%; opacity:0.55; }
+  50%{ background-position: 40% 30%, -80px -60px; opacity:0.68; }
+  100%{ background-position: 10% 10%, 0% 0%; opacity:0.55; }
+}
+
+/* Accessibility: stop motion if user prefers reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .bg-anim::before,
+  .bg-anim::after{
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Small screens: reduce blur and intensity for performance */
+@media (max-width: 720px){
+  .bg-anim::before{ filter: blur(24px) saturate(110%); opacity:0.95; }
+  .bg-anim::after{ opacity:0.48; background-size: 3px 3px, 100px 100px; animation-duration: 60s; }
+}
+
+/* Optional: darker vignette overlay to help cards pop */
+.bg-anim-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(60% 50% at 50% 40%, rgba(0,0,0,0.0), rgba(0,0,0,0.45));
+  mix-blend-mode: multiply;
+}

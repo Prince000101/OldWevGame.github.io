@@ -9,46 +9,78 @@
 <body class="arcade-bg">
 
   <header>
-    <h1 class="title">🎮 Prince's Retro Arcade 🎮</h1>
-    <p class="subtitle">Pick a game and start playing!</p>
+    <div class="header-inner">
+      <h1 class="title">
+        <span class="decorate">▛▞</span>
+        Prince's Retro Arcade
+        <span class="decorate">▚▜</span>
+      </h1>
+      <p class="subtitle">Pick a game and start playing!</p>
+    </div>
+
+    <button id="themeToggle" class="theme-toggle" aria-pressed="false" title="Toggle light / dark">
+      <span class="icon">🌙</span>
+      <span class="label">Dark</span>
+    </button>
   </header>
 
   <main class="gallery">
-    <!-- Game Cards -->
-    <a href="games/space-shooter.html" class="game-card">
-      <img src="assets/images/space.png" alt="Space Shooter" class="game-img">
-      <h2>Space Shooter</h2>
+    <!-- existing cards kept, new cards added -->
+    <a href="games/space-shooter.html" class="game-card card">
+      <img src="assets/images/space.png" alt="Space Shooter" class="card__media">
+      <div class="card__content">
+        <p class="card__title">Space Shooter</p>
+        <p class="card__description">Blast through waves of enemies.</p>
+      </div>
     </a>
 
-    <a href="games/tetris.html" class="game-card">
-      <img src="assets/images/tetris.png" alt="Tetris" class="game-img">
-      <h2>Tetris</h2>
+    <a href="games/tetris.html" class="game-card card">
+      <img src="assets/images/tetris.png" alt="Tetris" class="card__media">
+      <div class="card__content">
+        <p class="card__title">Tetris</p>
+        <p class="card__description">Stack blocks, clear lines, survive.</p>
+      </div>
     </a>
 
-    <a href="games/snake.html" class="game-card">
-      <img src="assets/images/snake.png" alt="Snake" class="game-img">
-      <h2>Snake</h2>
+    <a href="games/snake.html" class="game-card card">
+      <img src="assets/images/snake.png" alt="Snake" class="card__media">
+      <div class="card__content">
+        <p class="card__title">Snake</p>
+        <p class="card__description">Eat, grow and avoid the walls.</p>
+      </div>
     </a>
 
-    <a href="games/pong.html" class="game-card">
-      <img src="assets/images/pong.png" alt="Pong" class="game-img">
-      <h2>Pong</h2>
+    <a href="games/pong.html" class="game-card card">
+      <img src="assets/images/pong.png" alt="Pong" class="card__media">
+      <div class="card__content">
+        <p class="card__title">Pong</p>
+        <p class="card__description">Classic paddle tennis.</p>
+      </div>
     </a>
 
-    <a href="games/minesweeper.html" class="game-card">
-      <img src="assets/images/minesweeper.png" alt="Minesweeper" class="game-img">
-      <h2>Minesweeper</h2>
-    </a>    
-
-    <a href="games/pacman.html" class="game-card">
-      <img src="assets/images/pacman.png" alt="Pac-Man" class="game-img">
-      <h2>Pac-Man</h2>
+    <a href="games/minesweeper.html" class="game-card card">
+      <img src="assets/images/minesweeper.png" alt="Minesweeper" class="card__media">
+      <div class="card__content">
+        <p class="card__title">Minesweeper</p>
+        <p class="card__description">Find mines, use logic, survive.</p>
+      </div>
     </a>
+
+    <a href="games/pacman.html" class="game-card card">
+      <img src="assets/images/pacman.png" alt="Pac-Man" class="card__media">
+      <div class="card__content">
+        <p class="card__title">Pac‑Man</p>
+        <p class="card__description">Eat pellets, avoid ghosts.</p>
+      </div>
+    </a>
+
+
   </main>
 
   <footer>
     <p>Made with ❤️ by Prince</p>
   </footer>
 
+  <script src="assets/js/theme.js" defer></script>
 </body>
 </html>
